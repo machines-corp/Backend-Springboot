@@ -1,0 +1,40 @@
+version: "3.9"
+
+services:
+  mysql-db:
+    image: mysql:8.0.36
+    container_name: mysql-db
+    command: --default-authentication-plugin=mysql_native_password
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-rootpass}
+      MYSQL_DATABASE: ${DB_NAME:-integrajobdb}
+      MYSQL_USER: ${DB_USER:-jrgazmuri}
+      MYSQL_PASSWORD: ${DB_PASSWORD:-jrgazmuri}
+    ports:
+      - "3306:3306"
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-prootpass"]
+      interval: 5s
+      timeout: 3s
+      retries: 15
+    volumes:
+      - mysql_data:/var/lib/mysql
+
+  backend:
+    build: .
+    container_name: backend
+    depends_on:
+      mysql-db:
+        condition: service_healthy
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      DB_HOST: mysql-db
+      DB_PORT: 3306
+      DB_NAME: integrajobdb
+      DB_USER: jrgazmuri
+      DB_PASSWORD: jrgazmuri
+    ports:
+      - "8080:8080"
+
+volumes:
+  mysql_data:
