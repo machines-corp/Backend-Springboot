@@ -1,4 +1,4 @@
-package com.machinescorp.integrajob.datapi;
+package com.mchscorp.integrajob.datapi;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
