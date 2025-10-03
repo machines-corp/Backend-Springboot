@@ -31,3 +31,13 @@ build/
 
 ### VS Code ###
 .vscode/
+
+# Salidas del scraper
+scraper/out/
+scraper/logs/
+scraper/tmp/
+
+# Python basura común
+scraper/__pycache__/
+scraper/**/*.pyc
+scraper/.envscraper/out/

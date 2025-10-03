@@ -1,0 +1,7 @@
+out/
+logs/
+tmp/
+__pycache__/
+*.pyc
+.env
+.git
