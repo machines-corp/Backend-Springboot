@@ -53,4 +53,10 @@ public class RubroController {
                 })
                 .orElse(ResponseEntity.notFound().build());
     }
+    
+//    @GetMapping("/{id}/empresas")
+//    public List<Empresa> getEmpresasByRubro(@PathVariable Integer id) {
+//        return rubroService.findEmpresasByRubro(id);
+//    }
+
 }

@@ -53,4 +53,10 @@ public class OfertaJobController {
                 })
                 .orElse(ResponseEntity.notFound().build());
     }
+    
+//    @GetMapping("/oferta/{idOferta}")
+//    public List<RequisitoEducacion> getByOferta(@PathVariable Integer idOferta) {
+//        return requisitoEducacionService.findByOferta(idOferta);
+//    }
+
 }

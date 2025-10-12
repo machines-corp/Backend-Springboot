@@ -16,8 +16,19 @@ COPY src/ src/
 RUN ./mvnw -B -DskipTests package
 
 # ---------- runtime ----------
-FROM eclipse-temurin:21-jre
+# FROM eclipse-temurin:21-jre
+# WORKDIR /app
+# COPY --from=build /app/target/*.jar app.jar
+# EXPOSE 8082
+# ENTRYPOINT ["java","-jar","app.jar"]
+
+FROM eclipse-temurin:21-jdk
 WORKDIR /app
-COPY --from=build /app/target/*.jar app.jar
-EXPOSE 8080
-ENTRYPOINT ["java","-jar","app.jar"]
+
+COPY .mvn/ .mvn/
+COPY mvnw pom.xml ./
+COPY src/ src/
+
+RUN chmod +x mvnw && sed -i 's/\r$//' mvnw
+
+CMD ["./mvnw", "spring-boot:run"]
