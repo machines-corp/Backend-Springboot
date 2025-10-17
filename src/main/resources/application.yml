@@ -1,0 +1,5 @@
+bne:
+  api:
+    token-url: https://test.api.bne.cl/oauth/token
+    client-id: ${BNE_CLIENT_ID}
+    client-secret: ${BNE_CLIENT_SECRET}

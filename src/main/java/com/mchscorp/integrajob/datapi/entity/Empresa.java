@@ -18,6 +18,7 @@ public class Empresa {
 
     private String idXFuente;
     private String nombreEmp;
+    @Column(name = "descrip_emp", columnDefinition = "TEXT")
     private String descripEmp;
     private String direccion;
     private String url;

@@ -1,23 +1,27 @@
-# ---------- build ----------
+# ---------- build stage ----------
 FROM eclipse-temurin:21-jdk AS build
 WORKDIR /app
 
-# Copiamos el wrapper y lo dejamos ejecutable (y sin CRLF)
+# Copiamos el wrapper y preparamos
 COPY .mvn/ .mvn/
-COPY mvnw .
+COPY mvnw pom.xml ./
 RUN chmod +x mvnw && sed -i 's/\r$//' mvnw
 
-# Cache de dependencias (más rápido en builds posteriores)
-COPY pom.xml .
+# Cache de dependencias
 RUN ./mvnw -B -DskipTests dependency:go-offline
 
-# Copiamos el código y compilamos
+# Copiamos el código fuente y construimos el jar
 COPY src/ src/
-RUN ./mvnw -B -DskipTests package
+RUN ./mvnw -B -DskipTests clean package
 
-# ---------- runtime ----------
+# ---------- runtime stage ----------
 FROM eclipse-temurin:21-jre
 WORKDIR /app
+
+# Copiamos solo el jar final del build
 COPY --from=build /app/target/*.jar app.jar
-EXPOSE 8080
-ENTRYPOINT ["java","-jar","app.jar"]
+
+# Exponemos el puerto del backend
+EXPOSE 8082
+
+ENTRYPOINT ["java", "-jar", "app.jar"]

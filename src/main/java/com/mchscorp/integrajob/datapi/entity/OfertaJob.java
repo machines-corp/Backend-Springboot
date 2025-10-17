@@ -27,6 +27,7 @@ public class OfertaJob {
 
     private String fuente;
     private String puesto;
+    @Column(length = 10000)
     private String descripcion;
     private String url;
     private String contrato;

@@ -4,7 +4,7 @@ services:
   mysql-db:
     image: mysql:8.0.36
     container_name: mysql-db
-    command: --default-authentication-plugin=mysql_native_password
+    command: --default-authentication-plugin=caching_sha2_password
     environment:
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-rootpass}
       MYSQL_DATABASE: ${DB_NAME:-integrajobdb}
@@ -26,6 +26,8 @@ services:
     depends_on:
       mysql-db:
         condition: service_healthy
+    ports:
+      - "8082:8082"
     environment:
       SPRING_PROFILES_ACTIVE: docker
       DB_HOST: mysql-db
@@ -33,8 +35,9 @@ services:
       DB_NAME: integrajobdb
       DB_USER: jrgazmuri
       DB_PASSWORD: jrgazmuri
-    ports:
-      - "8080:8080"
+      BNE_CLIENT_ID: e9b75m_XYbA5n0Dz33M_rbChsRMa
+      BNE_CLIENT_SECRET: e9b75m_XYbA5n0Dz33M_rbChsRMa
+
 
 volumes:
   mysql_data:

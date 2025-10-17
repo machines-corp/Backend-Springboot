@@ -24,6 +24,4 @@ public class Rubro {
 		// TODO Auto-generated method stub
 		
 	}
-
-    // getters y setters
 }
