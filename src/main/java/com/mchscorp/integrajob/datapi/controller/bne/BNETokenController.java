@@ -14,7 +14,7 @@ public class BNETokenController {
     }
 
     @GetMapping("/token")
-    public String obtenerToken() {
+    public String getToken() {
         return tokenService.obtenerToken();
     }
 }

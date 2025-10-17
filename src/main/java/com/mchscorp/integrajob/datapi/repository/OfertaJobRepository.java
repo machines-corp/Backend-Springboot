@@ -6,6 +6,6 @@ import org.springframework.stereotype.Repository;
 
 @Repository
 public interface OfertaJobRepository extends JpaRepository<OfertaJob, Integer> {
-
+    boolean existsByUrl(String url);
 }
 
