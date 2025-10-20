@@ -15,12 +15,12 @@ public class OfertaCaracteristica {
     private OfertaCaracteristicaId id;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @MapsId("idOferta") // ← vincula con el campo del embeddable
+    @MapsId("idOferta")
     @JoinColumn(name = "id_oferta", nullable = false)
     private OfertaJob oferta;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @MapsId("idCaracteristica") // ← vincula con el campo del embeddable
+    @MapsId("idCaracteristica")
     @JoinColumn(name = "id_caracteristica", nullable = false)
     private Caracteristica caracteristica;
 }
