@@ -1,6 +1,7 @@
 package com.mchscorp.integrajob.datapi.controller;
 
 import com.mchscorp.integrajob.datapi.entity.OfertaJob;
+import com.mchscorp.integrajob.datapi.dto.OfertaJobDTO;
 import com.mchscorp.integrajob.datapi.service.OfertaJobService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -18,9 +19,7 @@ public class OfertaJobController {
     }
 
     @GetMapping
-    public List<OfertaJob> getAll() {
-        return ofertaJobService.findAll();
-    }
+    public List<OfertaJobDTO> getAllDTO() {return ofertaJobService.findAllDTO();}
 
     @GetMapping("/{id}")
     public ResponseEntity<OfertaJob> getById(@PathVariable Integer id) {

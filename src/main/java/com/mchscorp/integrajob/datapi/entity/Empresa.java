@@ -2,6 +2,7 @@ package com.mchscorp.integrajob.datapi.entity;
 
 import java.util.List;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -28,6 +29,7 @@ public class Empresa {
     private Rubro rubro;
 
     @OneToMany(mappedBy = "empresa")
+    @JsonIgnore
     private List<OfertaJob> ofertas;
 
 	public void setIdEmpresa(Integer id) {
