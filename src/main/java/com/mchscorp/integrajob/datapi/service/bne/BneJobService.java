@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mchscorp.integrajob.datapi.entity.*;
 import com.mchscorp.integrajob.datapi.repository.*;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
@@ -11,6 +12,8 @@ import reactor.core.publisher.Mono;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 
 @Service
 public class BneJobService {
@@ -24,48 +27,74 @@ public class BneJobService {
     private final SalarioRepository salarioRepo;
     private final BNETokenService tokenService;
 
-    public BneJobService(
-            OfertaJobRepository ofertaRepo,
-            EmpresaRepository empresaRepo,
-            UbicacionRepository ubicacionRepo,
-            SalarioRepository salarioRepo,
-            BNETokenService tokenService) {
-        this.ofertaRepo = ofertaRepo;
-        this.empresaRepo = empresaRepo;
-        this.ubicacionRepo = ubicacionRepo;
-        this.salarioRepo = salarioRepo;
-        this.tokenService = tokenService;
-
-        this.webClient = WebClient.builder()
-                .baseUrl("https://test.api.bne.cl/JobOfferingsService/v1/1.0.0")
-                .build();
-    }
+    // Configurables por application.yml
+    private final int pageLimit;
+    private final int totalDeseado;
 
     public int importarOfertasDesdeBNE() throws Exception {
-
-        // 🔑 Obtener token válido desde el servicio
         String token = tokenService.obtenerToken();
+        int totalOfertas = 0;
+        int offset = 0;
+        int limit = 100;
+        int totalDeseado = 1000;
 
-        String json = webClient.get()
-                .uri("/jobofferings/active?limit=20") // puedes ajustar limit
-                .header("Authorization", "Bearer " + token)
-                .retrieve()
-                .bodyToMono(String.class)
-                .onErrorResume(e -> {
-                    System.err.println("⚠️ Error al consultar BNE: " + e.getMessage());
-                    return Mono.empty();
-                })
-                .block();
+        System.out.println("🚀 Iniciando importación desde la BNE...");
 
-        if (json == null || json.isBlank()) {
-            System.out.println("⚠️ Sin respuesta válida desde la BNE.");
-            return 0;
+        while (totalOfertas < totalDeseado) {
+            System.out.println("📡 Solicitando ofertas desde offset=" + offset);
+
+            String json = webClient.get()
+                    .uri(uriBuilder -> uriBuilder
+                            .path("/jobofferings/active")
+                            .queryParam("limit", limit)
+                            .queryParam("offset", offset)
+                            .build())
+                    .header("Authorization", "Bearer " + token)
+                    .retrieve()
+                    .bodyToMono(String.class)
+                    .onErrorResume(e -> {
+                        System.err.println("⚠️ Error al consultar BNE: " + e.getMessage());
+                        return Mono.empty();
+                    })
+                    .block();
+
+            if (json == null || json.isBlank()) {
+                System.out.println("⚠️ Sin respuesta válida desde la BNE (offset=" + offset + ")");
+                break;
+            }
+
+            JsonNode root = mapper.readTree(json);
+            JsonNode arr = root.path("searchResult");
+            int count = root.path("count").asInt(0);
+            int total = root.path("total").asInt(0);
+
+            if (!arr.isArray() || arr.isEmpty()) {
+                System.out.println("⚠️ Sin más resultados (offset=" + offset + ")");
+                break;
+            }
+
+            int nuevas = procesarOfertas(arr);
+            totalOfertas += nuevas;
+            System.out.println("Página procesada (offset=" + offset + ", nuevas=" + nuevas + ", total acumulado=" + totalOfertas + ")");
+
+            // Si alcanzamos o superamos el total de la API, detenemos el ciclo
+            if (offset + limit >= total) {
+                System.out.println("Límite total alcanzado (" + total + " ofertas).");
+                break;
+            }
+
+            offset += limit;
+
+            // pequeña pausa para no saturar la API
+            Thread.sleep(1000);
         }
 
-        JsonNode root = mapper.readTree(json);
-        JsonNode arr = root.path("searchResult");
-        if (!arr.isArray() || arr.isEmpty()) return 0;
+        System.out.println("🏁 Importación finalizada. Total nuevas ofertas: " + totalOfertas);
+        return totalOfertas;
+    }
 
+
+    private int procesarOfertas(JsonNode arr) {
         int nuevas = 0;
 
         for (JsonNode job : arr) {
@@ -101,22 +130,22 @@ public class BneJobService {
             }
 
             Ubicacion ubic = ubicacionRepo.findByRegionAndComuna(region, comuna)
-                    .orElseGet(() -> {
-                        Ubicacion ubicacion;
-                        ubicacion = ubicacionRepo.save(
-                                Ubicacion.builder()
-                                        .region(region)
-                                        .comuna(comuna)
-                                        .build()
-                        );
-                        return ubicacion;
-                    });
+                    .orElseGet(() -> ubicacionRepo.save(
+                            Ubicacion.builder()
+                                    .region(region)
+                                    .comuna(comuna)
+                                    .build()
+                    ));
 
             // ---------------- OFERTA ----------------
             String url = job.path("url").asText(null);
-            if (url != null && ofertaRepo.existsByUrl(url)) continue;
+            if (url != null && ofertaRepo.existsByUrl(url)) {
+                // duplicada por URL
+                continue;
+            }
 
-            String titulo = job.hasNonNull("title") ? job.get("title").asText() : job.path("name").asText(null);
+            String titulo = job.hasNonNull("title") ? job.get("title").asText()
+                    : job.path("name").asText(null);
             String contrato = job.path("employmentType").asText(null);
             String expReq = job.path("experienceRequirements").asText(null);
             String hrsLab = job.path("workHours").asText(null);
@@ -170,9 +199,13 @@ public class BneJobService {
 
     private static LocalDate parseFecha(String s) {
         if (s == null || s.isBlank()) return null;
-        String onlyDate = s.contains("T") ? s.substring(0, 10) : s;
-        onlyDate = onlyDate.replace('/', '-');
-        return LocalDate.parse(onlyDate);
+        try {
+            if (s.contains("T")) return LocalDate.parse(s.substring(0, 10), DateTimeFormatter.ISO_DATE);
+            String norm = s.replace('/', '-');
+            return LocalDate.parse(norm, DateTimeFormatter.ISO_DATE);
+        } catch (DateTimeParseException e) {
+            return null;
+        }
     }
 
     // Ejecuta cada día a las 07:00 AM
