@@ -36,8 +36,8 @@ services:
       DB_NAME: integrajobdb
       DB_USER: jrgazmuri
       DB_PASSWORD: jrgazmuri
-      BNE_CLIENT_ID: e9b75m_XYbA5n0Dz33M_rbChsRMa
-      BNE_CLIENT_SECRET: e9b75m_XYbA5n0Dz33M_rbChsRMa
+      BNE_CLIENT_ID: "e9b75m_XYbA5n0Dz33M_rbChsRMa"
+      BNE_CLIENT_SECRET: "e9b75m_XYbA5n0Dz33M_rbChsRMa"
 
 
 volumes:

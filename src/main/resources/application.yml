@@ -1,8 +1,11 @@
 bne:
   api:
+    base-url: https://test.api.bne.cl/api
     token-url: https://test.api.bne.cl/oauth/token
     client-id: ${BNE_CLIENT_ID}
     client-secret: ${BNE_CLIENT_SECRET}
   import:
     limit: 100
     total: 1000
+  page-limit: 100
+  total-deseado: 1000
