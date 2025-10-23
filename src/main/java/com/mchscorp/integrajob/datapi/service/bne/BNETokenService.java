@@ -31,8 +31,8 @@ public class BNETokenService {
     private String clientSecret;
 
     private final ObjectMapper mapper = new ObjectMapper();
-    private final File tokenFile = new File("src/main/resources/tokens/bne_token.json");
-
+    private final File tokenFile = new File("/tmp/bne_token.json");
+    
     public String obtenerToken() {
         try {
             if (tokenFile.exists()) {

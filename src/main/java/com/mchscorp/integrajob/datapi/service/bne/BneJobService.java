@@ -42,7 +42,7 @@ public class BneJobService {
 
         int totalOfertas = 0;
         int offset = 0;
-        int limit = pageLimit;  // usa el configurado
+        int limit = pageLimit;
 
         System.out.println("Iniciando importación desde la BNE...");
 
@@ -78,7 +78,7 @@ public class BneJobService {
             System.out.println("DEBUG: 'Total' reportado por la API: " + total);
 
             if (!arr.isArray() || arr.isEmpty()) {
-                System.out.println("⚠️ Sin más resultados (offset=" + offset + ")");
+                System.out.println("Sin más resultados (offset=" + offset + ")");
                 break;
             }
 
@@ -95,7 +95,7 @@ public class BneJobService {
             Thread.sleep(800); // respira un poquito la API
         }
 
-        System.out.println("🏁 Importación finalizada. Total nuevas ofertas: " + totalOfertas);
+        System.out.println("Importación finalizada. Total nuevas ofertas: " + totalOfertas);
         return totalOfertas;
     }
 
@@ -103,101 +103,107 @@ public class BneJobService {
         int nuevas = 0;
 
         for (JsonNode job : arr) {
-            // ---------------- EMPRESA ----------------
-            JsonNode empresaNode = job.path("hiringOrganization");
-            String idXFuente = empresaNode.path("identifier").asText(null);
-            String nombreEmp = empresaNode.path("name").asText(null);
-            String descripEmp = empresaNode.path("description").asText(null);
-            String direccionEmp = empresaNode.path("address").asText(null);
+            try {
+                // ---------------- EMPRESA ----------------
+                JsonNode empresaNode = job.path("hiringOrganization");
+                String idXFuente = empresaNode.path("identifier").asText(null);
+                String nombreEmp = empresaNode.path("name").asText(null);
+                String descripEmp = empresaNode.path("description").asText(null);
+                String direccionEmp = empresaNode.path("address").asText(null);
 
-            Empresa empresa = empresaRepo.findByIdXFuente(idXFuente)
-                    .orElseGet(() -> empresaRepo.save(
-                            Empresa.builder()
-                                    .idXFuente(idXFuente)
-                                    .nombreEmp(nombreEmp)
-                                    .descripEmp(descripEmp)
-                                    .direccion(direccionEmp)
-                                    .build()
-                    ));
+                Empresa empresa = empresaRepo.findByIdXFuente(idXFuente)
+                        .orElseGet(() -> empresaRepo.save(
+                                Empresa.builder()
+                                        .idXFuente(idXFuente)
+                                        .nombreEmp(nombreEmp)
+                                        .descripEmp(descripEmp)
+                                        .direccion(direccionEmp)
+                                        .build()
+                        ));
 
-            // ---------------- UBICACIÓN ----------------
-            JsonNode locNode = job.path("jobLocation");
-            String fullAddr = locNode.path("address").asText("");
-            String region, comuna;
-            if (!fullAddr.isBlank()) {
-                String[] partes = fullAddr.split(",");
-                region = partes[0].trim();
-                if (partes.length > 1) comuna = partes[1].trim();
-                else {
+                // ---------------- UBICACIÓN ----------------
+                JsonNode locNode = job.path("jobLocation");
+                String fullAddr = locNode.path("address").asText("");
+                String region, comuna;
+                if (!fullAddr.isBlank()) {
+                    String[] partes = fullAddr.split(",");
+                    region = partes[0].trim();
+                    if (partes.length > 1) comuna = partes[1].trim();
+                    else {
+                        comuna = null;
+                    }
+                } else {
                     comuna = null;
+                    region = null;
                 }
-            } else {
-                comuna = null;
-                region = null;
-            }
 
-            Ubicacion ubic = ubicacionRepo.findByRegionAndComuna(region, comuna)
-                    .orElseGet(() -> ubicacionRepo.save(
-                            Ubicacion.builder()
-                                    .region(region)
-                                    .comuna(comuna)
-                                    .build()
-                    ));
+                Ubicacion ubic = ubicacionRepo.findByRegionAndComuna(region, comuna)
+                        .orElseGet(() -> ubicacionRepo.save(
+                                Ubicacion.builder()
+                                        .region(region)
+                                        .comuna(comuna)
+                                        .build()
+                        ));
 
-            // ---------------- OFERTA ----------------
-            String url = job.path("url").asText(null);
-            if (url != null && ofertaRepo.existsByUrl(url)) {
-                continue; // duplicada por URL
-            }
-
-            String titulo = job.hasNonNull("title") ? job.get("title").asText()
-                    : job.path("name").asText(null);
-            String contrato = job.path("employmentType").asText(null);
-            String expReq = job.path("experienceRequirements").asText(null);
-            String hrsLab = job.path("workHours").asText(null);
-            int vacantes = job.path("totalJobOpenings").asInt(1);
-
-            LocalDate fechaPost = parseFecha(job.path("datePosted").asText(null));
-            LocalDate validThrough = parseFecha(job.path("validThrough").asText(null));
-
-            OfertaJob oferta = ofertaRepo.save(
-                    OfertaJob.builder()
-                            .empresa(empresa)
-                            .ubicacion(ubic)
-                            .fuente("BNE")
-                            .puesto(titulo)
-                            .descripcion(job.path("description").asText(null))
-                            .url(url)
-                            .contrato(contrato)
-                            .expReq(expReq)
-                            .fechaPost(fechaPost)
-                            .validThrough(validThrough)
-                            .hrsLaborales(hrsLab)
-                            .vacantes(vacantes)
-                            .build()
-            );
-
-            // ---------------- SALARIO ----------------
-            JsonNode salary = job.path("baseSalary");
-            if (salary != null && (salary.has("minValue") || salary.has("maxValue"))) {
-                String moneda = salary.path("currency").asText("CLP");
-                BigDecimal min = BigDecimal.valueOf(salary.path("minValue").asDouble(0));
-                BigDecimal max = BigDecimal.valueOf(salary.path("maxValue").asDouble(0));
-
-                if (min.signum() > 0 || max.signum() > 0) {
-                    salarioRepo.save(
-                            Salario.builder()
-                                    .oferta(oferta)
-                                    .moneda(moneda)
-                                    .minimo(min)
-                                    .maximo(max)
-                                    .mostrarSueldo(true)
-                                    .build()
-                    );
+                // ---------------- OFERTA ----------------
+                String url = job.path("url").asText(null);
+                if (url != null && ofertaRepo.existsByUrl(url)) {
+                    continue; // duplicada por URL
                 }
-            }
+
+                String titulo = job.hasNonNull("title") ? job.get("title").asText()
+                        : job.path("name").asText(null);
+                String contrato = job.path("employmentType").asText(null);
+                String expReq = job.path("experienceRequirements").asText(null);
+                String hrsLab = job.path("workHours").asText(null);
+                int vacantes = job.path("totalJobOpenings").asInt(1);
+
+                LocalDate fechaPost = parseFecha(job.path("datePosted").asText(null));
+                LocalDate validThrough = parseFecha(job.path("validThrough").asText(null));
+
+                OfertaJob oferta = ofertaRepo.save(
+                        OfertaJob.builder()
+                                .empresa(empresa)
+                                .ubicacion(ubic)
+                                .fuente("BNE")
+                                .puesto(titulo)
+                                .descripcion(job.path("description").asText(null))
+                                .url(url)
+                                .contrato(contrato)
+                                .expReq(expReq)
+                                .fechaPost(fechaPost)
+                                .validThrough(validThrough)
+                                .hrsLaborales(hrsLab)
+                                .vacantes(vacantes)
+                                .build()
+                );
+
+                // ---------------- SALARIO ----------------
+                JsonNode salary = job.path("baseSalary");
+                if (salary != null && (salary.has("minValue") || salary.has("maxValue"))) {
+                    String moneda = salary.path("currency").asText("CLP");
+                    BigDecimal min = BigDecimal.valueOf(salary.path("minValue").asDouble(0));
+                    BigDecimal max = BigDecimal.valueOf(salary.path("maxValue").asDouble(0));
+
+                    if (min.signum() > 0 || max.signum() > 0) {
+                        salarioRepo.save(
+                                Salario.builder()
+                                        .oferta(oferta)
+                                        .moneda(moneda)
+                                        .minimo(min)
+                                        .maximo(max)
+                                        .mostrarSueldo(true)
+                                        .build()
+                        );
+                    }
+                }
 
             nuevas++;
+            } catch (Exception e) {
+                // Si algo falla, registra el error y continúa con la siguiente oferta
+                String url = job.path("url").asText("URL_DESCONOCIDA");
+                System.err.println("Error al procesar oferta BNE " + url + ": " + e.getMessage());
+            }
         }
 
         return nuevas;
